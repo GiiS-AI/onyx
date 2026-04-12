@@ -176,6 +176,10 @@ export interface SettingsHeaderProps {
   backButton?: boolean;
   onBack?: () => void;
   separator?: boolean;
+  /** Enable inline editing of the title. */
+  editable?: boolean;
+  /** Called when the user commits a title edit. */
+  onTitleChange?: (newTitle: string) => void;
 }
 function SettingsHeader({
   icon: Icon,
@@ -186,6 +190,8 @@ function SettingsHeader({
   backButton,
   onBack,
   separator,
+  editable,
+  onTitleChange,
 }: SettingsHeaderProps) {
   const [showShadow, setShowShadow] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -241,6 +247,8 @@ function SettingsHeader({
               description={description}
               sizePreset="headline"
               variant="heading"
+              editable={editable}
+              onTitleChange={onTitleChange}
             />
           </div>
           {rightChildren}
