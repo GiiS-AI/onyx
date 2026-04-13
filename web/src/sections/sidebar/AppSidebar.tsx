@@ -540,7 +540,7 @@ const MemoizedAppSidebarInner = memo(function AppSidebarInner() {
           folded={folded}
           href="/proposal-review"
         >
-          Argus
+          Proposal Review
         </SidebarTab>
       </div>
     ),
