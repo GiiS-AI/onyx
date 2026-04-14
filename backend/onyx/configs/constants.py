@@ -449,6 +449,7 @@ class OnyxRedisLocks:
         "da_lock:check_connector_external_group_sync_beat"
     )
     OPENSEARCH_MIGRATION_BEAT_LOCK = "da_lock:opensearch_migration_beat"
+    CHECK_DANGLING_IMPORT_JOBS_BEAT_LOCK = "da_lock:check_dangling_import_jobs_beat"
 
     MONITOR_BACKGROUND_PROCESSES_LOCK = "da_lock:monitor_background_processes"
     CHECK_AVAILABLE_TENANTS_LOCK = "da_lock:check_available_tenants"
@@ -611,6 +612,9 @@ class OnyxCeleryTask:
 
     # Hook execution log retention
     HOOK_EXECUTION_LOG_CLEANUP_TASK = "hook_execution_log_cleanup_task"
+
+    # Proposal review import cleanup
+    CHECK_FOR_DANGLING_IMPORT_JOBS = "check_for_dangling_import_jobs"
 
     # Sandbox cleanup
     CLEANUP_IDLE_SANDBOXES = "cleanup_idle_sandboxes"
