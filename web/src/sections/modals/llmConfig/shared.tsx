@@ -48,7 +48,6 @@ import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import useUsers from "@/hooks/useUsers";
 import { toast } from "@/hooks/useToast";
-import { UserRole } from "@/lib/types";
 import Modal from "@/refresh-components/Modal";
 import { getProvider } from "@/lib/llmConfig";
 
@@ -149,8 +148,7 @@ export function ModelAccessField() {
   const { data: usersData } = useUsers({ includeApiKeys: false });
   const isPaidEnterpriseFeaturesEnabled = usePaidEnterpriseFeaturesEnabled();
 
-  const adminCount =
-    usersData?.accepted.filter((u) => u.role === UserRole.ADMIN).length ?? 0;
+  const adminCount = usersData?.accepted.filter((u) => u.is_admin).length ?? 0;
 
   const isPublic = formikProps.values.is_public;
   const selectedGroupIds = formikProps.values.groups ?? [];
