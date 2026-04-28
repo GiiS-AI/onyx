@@ -208,7 +208,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 title={agent.owner?.email || "Onyx"}
                 sizePreset="secondary"
                 variant="body"
-                prominence="muted"
+                color="muted"
               />
               <Content
                 icon={SvgActions}
@@ -221,7 +221,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 }
                 sizePreset="secondary"
                 variant="body"
-                prominence="muted"
+                color="muted"
               />
             </div>
 
