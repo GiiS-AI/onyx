@@ -12,6 +12,7 @@ PR; that path is intentionally out of scope here.
 """
 
 from collections.abc import Generator
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -235,3 +236,37 @@ def test_task_handles_mix_of_failure_derived_and_arbitrary(
     assert job is not None
     assert job.resolved_count == 1
     assert job.skipped_count == 1  # the arbitrary target had no error to clear
+
+
+def test_task_marks_job_failed_on_mid_task_exception(
+    db_session: Session, cc_pair: ConnectorCredentialPair
+) -> None:
+    """Mid-task failure must transition the job + synthetic attempts to
+    FAILED rather than wedging in IN_PROGRESS forever."""
+    targets = [TargetSpec(cc_pair_id=cc_pair.id, document_id="doc-1")]
+    result = create_targeted_reindex_job(
+        db_session=db_session, requested_by_user_id=None, targets=targets
+    )
+
+    # Force the resolution-tracking helper to blow up after the
+    # IN_PROGRESS commit but before the SUCCESS commit.
+    with patch(
+        "onyx.background.celery.tasks.docprocessing."
+        "targeted_reindex_task._resolve_failure_derived_targets",
+        side_effect=RuntimeError("simulated mid-task crash"),
+    ):
+        with pytest.raises(RuntimeError, match="simulated mid-task crash"):
+            _run_task(result.targeted_reindex_job_id)
+
+    db_session.expire_all()
+    job = db_session.get(TargetedReindexJob, result.targeted_reindex_job_id)
+    assert job is not None
+    assert job.status == IndexingStatus.FAILED
+    assert job.completed_at is not None
+
+    attempts = (
+        db_session.query(IndexAttempt)
+        .filter(IndexAttempt.targeted_reindex_job_id == result.targeted_reindex_job_id)
+        .all()
+    )
+    assert all(a.status == IndexingStatus.FAILED for a in attempts)

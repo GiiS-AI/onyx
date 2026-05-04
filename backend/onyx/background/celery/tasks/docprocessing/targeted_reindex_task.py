@@ -32,6 +32,7 @@ from typing import Any
 
 from celery import shared_task
 from celery import Task
+from sqlalchemy.orm import Session
 
 from onyx.background.celery.apps.app_base import task_logger
 from onyx.configs.constants import OnyxCeleryTask
@@ -47,7 +48,7 @@ _TARGETED_REINDEX_TIME_LIMIT = _TARGETED_REINDEX_SOFT_TIME_LIMIT + 60
 
 
 def _resolve_failure_derived_targets(
-    db_session: Any, job_id: int
+    db_session: Session, job_id: int
 ) -> tuple[int, list[dict[str, Any]]]:
     """Mark `IndexAttemptError` rows resolved for every target whose
     `source_error_id` is set. Returns `(resolved_count, summary)`.
@@ -131,56 +132,95 @@ def run_targeted_reindex(
         job.status = IndexingStatus.IN_PROGRESS
         db_session.commit()
 
-        # 2. group targets by cc_pair (the unit of connector invocation).
-        target_rows = (
-            db_session.query(TargetedReindexJobTarget)
-            .filter(
-                TargetedReindexJobTarget.targeted_reindex_job_id
-                == targeted_reindex_job_id
+        resolved_count = 0
+        still_failing_count = 0
+        skipped_count = 0
+        try:
+            # 2. group targets by cc_pair (the unit of connector invocation).
+            target_rows = (
+                db_session.query(TargetedReindexJobTarget)
+                .filter(
+                    TargetedReindexJobTarget.targeted_reindex_job_id
+                    == targeted_reindex_job_id
+                )
+                .all()
             )
-            .all()
-        )
-        by_cc_pair: dict[int, list[TargetedReindexJobTarget]] = defaultdict(list)
-        for t in target_rows:
-            by_cc_pair[t.cc_pair_id].append(t)
+            by_cc_pair: dict[int, list[TargetedReindexJobTarget]] = defaultdict(list)
+            for t in target_rows:
+                by_cc_pair[t.cc_pair_id].append(t)
 
-        log.info(
-            "Targeted reindex starting: %d cc_pair(s), %d target(s)",
-            len(by_cc_pair),
-            len(target_rows),
-        )
+            log.info(
+                "Targeted reindex starting: %d cc_pair(s), %d target(s)",
+                len(by_cc_pair),
+                len(target_rows),
+            )
 
-        # 3. per-cc-pair work. Connector.reindex() and pipeline integration
-        #    are the follow-up; for now we simply count what was requested
-        #    and let the lifecycle code below mark the job complete.
-        total_attempted = len(target_rows)
+            # 3. per-cc-pair work. Connector.reindex() and pipeline integration
+            #    are the follow-up; for now we simply count what was requested
+            #    and let the lifecycle code below mark the job complete.
+            total_attempted = len(target_rows)
 
-        # 4. resolution tracking: walk failure-derived targets and clear
-        #    their error rows.
-        resolved_count, summary = _resolve_failure_derived_targets(
-            db_session, targeted_reindex_job_id
-        )
+            # 4. resolution tracking: walk failure-derived targets and clear
+            #    their error rows.
+            resolved_count, summary = _resolve_failure_derived_targets(
+                db_session, targeted_reindex_job_id
+            )
 
-        # 5. terminal state on synthetic IndexAttempts.
-        for attempt in attempts:
-            attempt.status = IndexingStatus.SUCCESS
-            attempt.time_updated = datetime.datetime.now(datetime.timezone.utc)
+            # 5. terminal state on synthetic IndexAttempts.
+            for attempt in attempts:
+                attempt.status = IndexingStatus.SUCCESS
+                attempt.time_updated = datetime.datetime.now(datetime.timezone.utc)
 
-        # 6. terminal state on the job + counters + summary snapshot.
-        job.resolved_count = resolved_count
-        job.skipped_count = max(0, total_attempted - resolved_count)
-        job.still_failing_count = 0
-        job.resolved_summary = summary
-        job.completed_at = datetime.datetime.now(datetime.timezone.utc)
-        job.status = IndexingStatus.SUCCESS
+            # 6. terminal state on the job + counters + summary snapshot.
+            # `still_failing_count` stays 0 here; the connector-invocation
+            # follow-up bumps it when the connector yields ConnectorFailure.
+            # `skipped_count` is everything left over after resolved and
+            # still-failing buckets are subtracted, so the three counters
+            # always sum to total_attempted regardless of which path landed
+            # them.
+            still_failing_count = 0
+            skipped_count = max(
+                0, total_attempted - resolved_count - still_failing_count
+            )
+            job.resolved_count = resolved_count
+            job.still_failing_count = still_failing_count
+            job.skipped_count = skipped_count
+            job.resolved_summary = summary
+            job.completed_at = datetime.datetime.now(datetime.timezone.utc)
+            job.status = IndexingStatus.SUCCESS
 
-        db_session.commit()
+            db_session.commit()
+        except Exception:
+            # Recover from any mid-task failure: roll back uncommitted
+            # work, then mark the job + synthetic IndexAttempts FAILED so
+            # the FE poll surfaces the failure instead of waiting on a
+            # row stuck in IN_PROGRESS forever.
+            log.exception("Targeted reindex task failed; marking job FAILED")
+            db_session.rollback()
+            job = get_targeted_reindex_job(db_session, targeted_reindex_job_id)
+            if job is not None and not job.status.is_terminal():
+                attempts = (
+                    db_session.query(IndexAttempt)
+                    .filter(
+                        IndexAttempt.targeted_reindex_job_id == targeted_reindex_job_id
+                    )
+                    .all()
+                )
+                now = datetime.datetime.now(datetime.timezone.utc)
+                for attempt in attempts:
+                    if not attempt.status.is_terminal():
+                        attempt.status = IndexingStatus.FAILED
+                        attempt.time_updated = now
+                job.status = IndexingStatus.FAILED
+                job.completed_at = now
+                db_session.commit()
+            raise
 
     log.info(
         "Targeted reindex done: resolved=%d skipped=%d still_failing=%d",
         resolved_count,
-        max(0, total_attempted - resolved_count),
-        0,
+        skipped_count,
+        still_failing_count,
     )
 
 
