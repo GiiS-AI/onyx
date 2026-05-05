@@ -68,7 +68,9 @@ def _resolve_failure_derived_targets(
     if not target_rows:
         return 0, []
 
-    error_ids = [t.source_error_id for t in target_rows if t.source_error_id]
+    error_ids = [
+        t.source_error_id for t in target_rows if t.source_error_id is not None
+    ]
     error_rows = (
         db_session.query(IndexAttemptError)
         .filter(
@@ -178,7 +180,6 @@ def run_targeted_reindex(
             # still-failing buckets are subtracted, so the three counters
             # always sum to total_attempted regardless of which path landed
             # them.
-            still_failing_count = 0
             skipped_count = max(
                 0, total_attempted - resolved_count - still_failing_count
             )
