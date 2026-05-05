@@ -235,6 +235,7 @@ def targeted_reindex_task(
     self: Task,
     *,
     targeted_reindex_job_id: int,
+    tenant_id: str,  # noqa: ARG001  # consumed by TenantAwareTask wrapper
 ) -> None:
     run_targeted_reindex(
         targeted_reindex_job_id=targeted_reindex_job_id,
