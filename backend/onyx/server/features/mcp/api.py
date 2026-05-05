@@ -453,7 +453,7 @@ def test_mcp_server_credentials(
             return False, "Failed to retrieve tools list from server."
 
     except Exception as e:
-        logger.error(f"Failed to test MCP server credentials: {e}")
+        logger.error("Failed to test MCP server credentials: %s", e)
         return False, f"Connection failed: {str(e)}"
 
 
@@ -501,7 +501,7 @@ async def _connect_oauth(
 ) -> MCPUserOAuthConnectResponse:
     """Connect OAuth flow for per-user MCP server authentication"""
 
-    logger.info(f"Initiating per-user OAuth for server: {request.server_id}")
+    logger.info("Initiating per-user OAuth for server: %s", request.server_id)
 
     try:
         server_id = int(request.server_id)
@@ -611,7 +611,7 @@ async def _connect_oauth(
     # always make a http request for the initial probe
     transport = mcp_server.transport if is_connected else MCPTransport.STREAMABLE_HTTP
     probe_url = mcp_server.server_url
-    logger.info(f"Probing OAuth server at: {probe_url}")
+    logger.info("Probing OAuth server at: %s", probe_url)
 
     oauth_auth = make_oauth_provider(
         mcp_server,
@@ -634,7 +634,7 @@ async def _connect_oauth(
                 transport=transport,
                 auth=oauth_auth,
             )
-            logger.info(f"OAuth initialization completed successfully: {x}")
+            logger.info("OAuth initialization completed successfully: %s", x)
             return x
         except Exception:
             logger.exception("OAuth initialization failed")
@@ -675,21 +675,21 @@ async def _connect_oauth(
                 try:
                     init_result = init_task.result()
                     logger.info(
-                        f"OAuth initialization completed during timeout: {init_result}"
+                        "OAuth initialization completed during timeout: %s", init_result
                     )
                     return MCPUserOAuthConnectResponse(
                         server_id=int(request.server_id),
                         oauth_url=request.return_path,
                     )
                 except Exception as e:
-                    logger.error(f"OAuth initialization failed during timeout: {e}")
+                    logger.error("OAuth initialization failed during timeout: %s", e)
                     raise HTTPException(
                         status_code=400, detail=f"OAuth initialization failed: {str(e)}"
                     )
             raise HTTPException(status_code=400, detail="Auth URL retrieval timed out")
 
         logger.info(
-            f"Connected to auth url: {oauth_url} for mcp server: {mcp_server.name}"
+            "Connected to auth url: %s for mcp server: %s", oauth_url, mcp_server.name
         )
         return MCPUserOAuthConnectResponse(
             server_id=int(request.server_id), oauth_url=oauth_url
@@ -700,13 +700,13 @@ async def _connect_oauth(
         t.cancel()
     try:
         init_result = init_task.result()
-        logger.info(f"OAuth initialization completed without redirect: {init_result}")
+        logger.info("OAuth initialization completed without redirect: %s", init_result)
     except Exception as e:
         if isinstance(e, ExceptionGroup):
             saved_e = log_exception_group(e)
         else:
             saved_e = e
-        logger.error(f"OAuth initialization failed: {saved_e}")
+        logger.error("OAuth initialization failed: %s", saved_e)
         # If initialize failed and we also didn't get an auth URL, surface an error
         raise HTTPException(
             status_code=400, detail=f"Failed to initialize OAuth client: {str(saved_e)}"
@@ -789,7 +789,10 @@ async def process_oauth_callback(
     db_session.commit()
 
     logger.info(
-        f"server_id={str(mcp_server.id)} server_name={mcp_server.name} return_path={state_data.return_path}"
+        "server_id=%s server_name=%s return_path=%s",
+        str(mcp_server.id),
+        mcp_server.name,
+        state_data.return_path,
     )
 
     return MCPOAuthCallbackResponse(
@@ -809,7 +812,7 @@ def save_user_credentials(
 ) -> MCPApiKeyResponse:
     """Save user credentials for template-based MCP server authentication"""
 
-    logger.info(f"Saving user credentials for server: {request.server_id}")
+    logger.info("Saving user credentials for server: %s", request.server_id)
 
     try:
         server_id = request.server_id
@@ -856,7 +859,7 @@ def save_user_credentials(
                     config_data[field_key] = field_val
 
         except Exception as e:
-            logger.error(f"Failed to process authentication template: {e}")
+            logger.error("Failed to process authentication template: %s", e)
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to process authentication template: {str(e)}",
@@ -907,7 +910,7 @@ def save_user_credentials(
         raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.warning(
-            f"Could not validate credentials for server {mcp_server.name}: {e}"
+            "Could not validate credentials for server %s: %s", mcp_server.name, e
         )
         validation_message = "Credentials saved but could not be validated"
 
@@ -921,7 +924,7 @@ def save_user_credentials(
         )
 
         logger.info(
-            f"User credentials saved for server {mcp_server.name} and user {email}"
+            "User credentials saved for server %s and user %s", mcp_server.name, email
         )
         db_session.commit()
 
@@ -935,7 +938,7 @@ def save_user_credentials(
         )
 
     except Exception as e:
-        logger.error(f"Failed to save user credentials: {e}")
+        logger.error("Failed to save user credentials: %s", e)
         raise HTTPException(status_code=500, detail="Failed to save user credentials")
 
 
@@ -960,7 +963,7 @@ def _ensure_mcp_server_owner_or_admin(server: DbMCPServer, user: User) -> None:
     if Permission.FULL_ADMIN_PANEL_ACCESS in get_effective_permissions(user):
         return
 
-    logger.info(f"User email: {user.email} server.owner={server.owner}")
+    logger.info("User email: %s server.owner=%s", user.email, server.owner)
     if server.owner != user.email:
         raise OnyxError(
             OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
@@ -1031,7 +1034,7 @@ def _db_mcp_server_to_api_mcp_server(
                 else:
                     admin_credentials = {}
                     logger.warning(
-                        f"No admin client info found for server {db_server.name}"
+                        "No admin client info found for server %s", db_server.name
                     )
     else:  # currently: per user auth using api key OR oauth
         user_config = get_user_connection_config(db_server.id, email, db)
@@ -1072,7 +1075,7 @@ def _db_mcp_server_to_api_mcp_server(
                         )
             elif can_view_admin_credentials:
                 admin_credentials = {}
-                logger.warning(f"No client info found for server {db_server.name}")
+                logger.warning("No client info found for server %s", db_server.name)
 
     # Get auth template if this is a per-user auth server
     auth_template = None
@@ -1090,7 +1093,7 @@ def _db_mcp_server_to_api_mcp_server(
                 )
         except Exception as e:
             logger.warning(
-                f"Failed to parse auth template for server {db_server.name}: {e}"
+                "Failed to parse auth template for server %s: %s", db_server.name, e
             )
 
     is_authenticated: bool = (
@@ -1138,7 +1141,7 @@ def get_mcp_servers_for_assistant(
 ) -> MCPServersResponse:
     """Get MCP servers for an assistant"""
 
-    logger.info(f"Fetching MCP servers for assistant: {assistant_id}")
+    logger.info("Fetching MCP servers for assistant: %s", assistant_id)
 
     try:
         persona_id = int(assistant_id)
@@ -1155,7 +1158,7 @@ def get_mcp_servers_for_assistant(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid assistant ID")
     except Exception as e:
-        logger.error(f"Failed to fetch MCP servers: {e}")
+        logger.error("Failed to fetch MCP servers: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch MCP servers")
 
 
@@ -1279,7 +1282,7 @@ def get_mcp_server_tools_snapshots(
                 # Re-raise HTTP exceptions (e.g. 401, 400) so they are returned to client
                 raise e
 
-            logger.error(f"Failed to discover tools for MCP server: {e}")
+            logger.error("Failed to discover tools for MCP server: %s", e)
             raise HTTPException(status_code=500, detail="Failed to discover tools")
 
     # Fetch and return tools from database
@@ -1352,7 +1355,7 @@ def _list_mcp_tools_by_id(
     user: User,
 ) -> MCPToolListResponse:
     """List available tools from an existing MCP server"""
-    logger.info(f"Listing tools for MCP server: {server_id}")
+    logger.info("Listing tools for MCP server: %s", server_id)
 
     try:
         # Get the MCP server
@@ -1414,7 +1417,7 @@ def _list_mcp_tools_by_id(
     import time
 
     t1 = time.time()
-    logger.info(f"Discovering tools for MCP server: {mcp_server.name}: {t1}")
+    logger.info("Discovering tools for MCP server: %s: %s", mcp_server.name, t1)
     server_url = mcp_server.server_url
 
     if mcp_server.transport is None:
@@ -1430,7 +1433,10 @@ def _list_mcp_tools_by_id(
         auth=auth,
     )
     logger.info(
-        f"Discovered {len(discovered_tools)} tools for MCP server: {mcp_server.name}: {time.time() - t1}"
+        "Discovered %s tools for MCP server: %s: %s",
+        len(discovered_tools),
+        mcp_server.name,
+        time.time() - t1,
     )
     update_mcp_server__no_commit(
         server_id=server_id,
@@ -1571,7 +1577,7 @@ def _upsert_mcp_server(
         )
 
         logger.info(
-            f"Updated existing MCP server '{request.name}' with ID {mcp_server.id}"
+            "Updated existing MCP server '%s' with ID %s", request.name, mcp_server.id
         )
 
     else:
@@ -1598,7 +1604,9 @@ def _upsert_mcp_server(
             db_session=db_session,
         )
 
-        logger.info(f"Created new MCP server '{request.name}' with ID {mcp_server.id}")
+        logger.info(
+            "Created new MCP server '%s' with ID %s", request.name, mcp_server.id
+        )
 
     # PT_OAUTH doesn't need stored connection config (uses user's login token)
     if (
@@ -1781,7 +1789,7 @@ def update_mcp_server_status(
     user: User = Depends(require_permission(Permission.MANAGE_ACTIONS)),
 ) -> dict[str, str]:
     """Update the status of an MCP server"""
-    logger.info(f"Updating MCP server {server_id} status to {status}")
+    logger.info("Updating MCP server %s status to %s", server_id, status)
 
     try:
         mcp_server = get_mcp_server_by_id(server_id, db)
@@ -1797,7 +1805,7 @@ def update_mcp_server_status(
     )
     db.commit()
 
-    logger.info(f"Successfully updated MCP server {server_id} status to {status}")
+    logger.info("Successfully updated MCP server %s status to %s", server_id, status)
     return {"message": f"Server status updated to {status.value}"}
 
 
@@ -1822,7 +1830,7 @@ def get_mcp_servers_for_admin(
         return MCPServersResponse(mcp_servers=mcp_servers)
 
     except Exception as e:
-        logger.error(f"Failed to fetch MCP servers for admin: {type(e)}:{e}")
+        logger.error("Failed to fetch MCP servers for admin: %s:%s", type(e), e)
         raise HTTPException(status_code=500, detail="Failed to fetch MCP servers")
 
 
@@ -1833,7 +1841,7 @@ def get_mcp_server_db_tools(
     user: User = Depends(require_permission(Permission.MANAGE_ACTIONS)),
 ) -> ServerToolsResponse:
     """Get existing database tools created for an MCP server"""
-    logger.info(f"Getting database tools for MCP server: {server_id}")
+    logger.info("Getting database tools for MCP server: %s", server_id)
 
     try:
         # Verify the server exists
@@ -1900,7 +1908,7 @@ def upsert_mcp_server(
 
         action_verb = "Updated" if request.existing_server_id else "Created"
         logger.info(
-            f"{action_verb} MCP server '{request.name}' with ID {mcp_server.id}"
+            "%s MCP server '%s' with ID %s", action_verb, request.name, mcp_server.id
         )
 
         if mcp_server.auth_type is None:
@@ -2072,10 +2080,13 @@ def delete_mcp_server_admin(
         # Log tools that will be deleted for debugging
         tools_to_delete = get_tools_by_mcp_server_id(server_id, db_session)
         logger.info(
-            f"Deleting MCP server {server_id} ({server.name}) with {len(tools_to_delete)} tools"
+            "Deleting MCP server %s (%s) with %s tools",
+            server_id,
+            server.name,
+            len(tools_to_delete),
         )
         for tool in tools_to_delete:
-            logger.debug(f"  - Tool to delete: {tool.name} (ID: {tool.id})")
+            logger.debug("  - Tool to delete: %s (ID: %s)", tool.name, tool.id)
 
         # Cascade behavior handled by FK ondelete in DB
         delete_mcp_server(server_id, db_session)
@@ -2084,12 +2095,14 @@ def delete_mcp_server_admin(
         remaining_tools = get_tools_by_mcp_server_id(server_id, db_session)
         if remaining_tools:
             logger.error(
-                f"WARNING: {len(remaining_tools)} tools still exist after deleting MCP server {server_id}"
+                "WARNING: %s tools still exist after deleting MCP server %s",
+                len(remaining_tools),
+                server_id,
             )
             # Manually delete them as a fallback
             for tool in remaining_tools:
                 logger.info(
-                    f"Manually deleting orphaned tool: {tool.name} (ID: {tool.id})"
+                    "Manually deleting orphaned tool: %s (ID: %s)", tool.name, tool.id
                 )
                 delete_tool__no_commit(tool.id, db_session)
         db_session.commit()
@@ -2098,5 +2111,5 @@ def delete_mcp_server_admin(
     except ValueError:
         raise HTTPException(status_code=404, detail="MCP server not found")
     except Exception as e:
-        logger.error(f"Failed to delete MCP server {server_id}: {e}")
+        logger.error("Failed to delete MCP server %s: %s", server_id, e)
         raise HTTPException(status_code=500, detail="Failed to delete MCP server")

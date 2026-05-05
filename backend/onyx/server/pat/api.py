@@ -60,7 +60,7 @@ def create_token(
     except ValueError as e:
         raise OnyxError(OnyxErrorCode.BAD_REQUEST, str(e))
 
-    logger.info(f"User {user.email} created PAT '{request.name}'")
+    logger.info("User %s created PAT '%s'", user.email, request.name)
 
     return CreatedTokenResponse(
         id=pat.id,
@@ -84,5 +84,5 @@ def delete_token(
     if not success:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Token not found or not owned by user")
 
-    logger.info(f"User {user.email} revoked token {token_id}")
+    logger.info("User %s revoked token %s", user.email, token_id)
     return {"message": "Token deleted successfully"}

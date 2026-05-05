@@ -242,14 +242,14 @@ export const ADMIN_ROUTES = {
     visibleWhen: (f: FeatureFlags) => f.vectorDbEnabled,
   },
   INDEX_SETTINGS: {
-    path: "/admin/configuration/search",
+    path: "/admin/configuration/index-settings",
     icon: SvgSearchMenu,
     title: "Index Settings",
     sidebarLabel: "Index Settings",
     requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
     section: "Documents & Knowledge",
     requiresEnterprise: false,
-    visibleWhen: (f: FeatureFlags) => f.vectorDbEnabled && !f.enableCloud,
+    visibleWhen: (f: FeatureFlags) => f.vectorDbEnabled,
   },
   DOCUMENT_PROCESSING: {
     path: "/admin/configuration/document-processing",

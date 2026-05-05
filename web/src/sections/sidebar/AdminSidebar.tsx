@@ -1,18 +1,14 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import SidebarSection from "@/sections/sidebar/SidebarSection";
 import * as SidebarLayouts from "@/layouts/sidebar-layouts";
-import { useSidebarFolded } from "@/layouts/sidebar-layouts";
+import {
+  useSidebarFolded,
+  useSidebarState,
+} from "@/layouts/sidebar-layouts";
 import { useCustomAnalyticsEnabled } from "@/lib/hooks/useCustomAnalyticsEnabled";
 import { useUser } from "@/providers/UserProvider";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
@@ -25,6 +21,7 @@ import {
   useLicense,
   hasActiveSubscription,
 } from "@/lib/billing";
+import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
 import useFilter from "@/hooks/useFilter";
 import AccountPopover from "@/sections/sidebar/AccountPopover";
 import {
@@ -33,22 +30,10 @@ import {
   type FeatureFlags,
   type SidebarItemEntry,
 } from "@/lib/admin-sidebar-utils";
+import { markdown } from "@opal/utils";
 
-interface AdminSidebarProps {
-  enableCloudSS: boolean;
-  folded: boolean;
-  onFoldChange: Dispatch<SetStateAction<boolean>>;
-}
-
-interface AdminSidebarInnerProps {
-  enableCloudSS: boolean;
-  onFoldChange: Dispatch<SetStateAction<boolean>>;
-}
-
-function AdminSidebarInner({
-  enableCloudSS,
-  onFoldChange,
-}: AdminSidebarInnerProps) {
+function AdminSidebarInner() {
+  const { setFolded } = useSidebarState();
   const folded = useSidebarFolded();
   const searchRef = useRef<HTMLInputElement>(null);
   const [focusSearch, setFocusSearch] = useState(false);
@@ -78,7 +63,7 @@ function AdminSidebarInner({
 
   const flags: FeatureFlags = {
     vectorDbEnabled: settings?.settings.vector_db_enabled !== false,
-    enableCloud: enableCloudSS,
+    enableCloud: NEXT_PUBLIC_CLOUD_ENABLED,
     enableEnterprise,
     customAnalyticsEnabled,
     hasSubscription: hasSubscriptionOrLicense,
@@ -107,7 +92,7 @@ function AdminSidebarInner({
             icon={SvgSearch}
             folded
             onClick={() => {
-              onFoldChange(false);
+              setFolded(false);
               setFocusSearch(true);
             }}
           >
@@ -158,7 +143,14 @@ function AdminSidebarInner({
             disabled
           >
             {group.items.map(({ link, icon, name }) => (
-              <SidebarTab key={link} disabled icon={icon}>
+              <SidebarTab
+                key={link}
+                disabled
+                icon={icon}
+                tooltip={markdown(
+                  "This feature is available on the [Business or Enterprise version of Onyx](/admin/billing) only."
+                )}
+              >
                 {name}
               </SidebarTab>
             ))}
@@ -187,17 +179,10 @@ function AdminSidebarInner({
   );
 }
 
-export default function AdminSidebar({
-  enableCloudSS,
-  folded,
-  onFoldChange,
-}: AdminSidebarProps) {
+export default function AdminSidebar() {
   return (
-    <SidebarLayouts.Root folded={folded} onFoldChange={onFoldChange}>
-      <AdminSidebarInner
-        enableCloudSS={enableCloudSS}
-        onFoldChange={onFoldChange}
-      />
+    <SidebarLayouts.Root>
+      <AdminSidebarInner />
     </SidebarLayouts.Root>
   );
 }

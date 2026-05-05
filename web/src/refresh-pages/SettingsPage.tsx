@@ -771,6 +771,7 @@ function ChatPreferencesSettings() {
     updateUserPersonalization,
     updateUserAutoScroll,
     updateUserShortcuts,
+    updateUserPasteAsTile,
     updateUserDefaultModel,
     updateUserDefaultAppMode,
     updateUserVoiceSettings,
@@ -888,6 +889,19 @@ function ChatPreferencesSettings() {
             <Switch
               checked={smoothStreamingEnabled}
               onCheckedChange={setSmoothStreamingEnabled}
+            />
+          </InputHorizontal>
+
+          <InputHorizontal
+            title="Collapse Large Pastes"
+            description="When pasting text longer than 3 lines or 200 characters, collapse it into a compact tile instead of inserting it inline. Click the tile to view or edit the full text."
+            withLabel
+          >
+            <Switch
+              checked={user?.preferences?.paste_as_tile ?? false}
+              onCheckedChange={(checked) => {
+                updateUserPasteAsTile(checked);
+              }}
             />
           </InputHorizontal>
 
@@ -1462,19 +1476,22 @@ function AccountsAccessSettings() {
                         variant="internal"
                       />
                     )}
-                    <Button
-                      onClick={() => setShowCreateModal(true)}
-                      prominence="secondary"
-                      rightIcon={SvgPlusCircle}
-                      disabled={!canCreatePAT}
-                      tooltip={
-                        !canCreatePAT
-                          ? "You don't have permission to create access tokens"
-                          : undefined
-                      }
-                    >
-                      New Access Token
-                    </Button>
+                    <div className="shrink-0">
+                      <Button
+                        rightIcon={SvgPlusCircle}
+                        prominence="internal"
+                        interaction={showCreateModal ? "active" : "rest"}
+                        onClick={() => setShowCreateModal(true)}
+                        disabled={!canCreatePAT}
+                        tooltip={
+                          !canCreatePAT
+                            ? "You don't have permission to create access tokens"
+                            : undefined
+                        }
+                      >
+                        New Access Token
+                      </Button>
+                    </div>
                   </Section>
 
                   <Section gap={0.25}>

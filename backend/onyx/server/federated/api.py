@@ -71,7 +71,10 @@ def create_federated_connector(
     tenant_id = get_current_tenant_id()
 
     logger.info(
-        f"Creating federated connector: source={federated_connector_data.source}, user={user.email}, tenant_id={tenant_id}"
+        "Creating federated connector: source=%s, user=%s, tenant_id=%s",
+        federated_connector_data.source,
+        user.email,
+        tenant_id,
     )
 
     try:
@@ -84,7 +87,8 @@ def create_federated_connector(
         )
 
         logger.info(
-            f"Successfully created federated connector with id={federated_connector.id}"
+            "Successfully created federated connector with id=%s",
+            federated_connector.id,
         )
 
         return FederatedConnectorResponse(
@@ -93,11 +97,11 @@ def create_federated_connector(
         )
 
     except ValueError as e:
-        logger.warning(f"Validation error creating federated connector: {e}")
+        logger.warning("Validation error creating federated connector: %s", e)
         db_session.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating federated connector: {e}")
+        logger.error("Error creating federated connector: %s", e)
         db_session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -140,7 +144,7 @@ def get_entities(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching entities for federated connector {id}: {e}")
+        logger.error("Error fetching entities for federated connector %s: %s", id, e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -184,7 +188,7 @@ def get_credentials_schema(
         raise
     except Exception as e:
         logger.error(
-            f"Error fetching credentials schema for federated connector {id}: {e}"
+            "Error fetching credentials schema for federated connector %s: %s", id, e
         )
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -213,7 +217,7 @@ def get_configuration_schema_by_source(
         return ConfigurationSchemaResponse(configuration=configuration_dict)
 
     except Exception as e:
-        logger.error(f"Error fetching configuration schema for source {source}: {e}")
+        logger.error("Error fetching configuration schema for source %s: %s", source, e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -244,7 +248,7 @@ def get_credentials_schema_by_source(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching credentials schema for source {source}: {e}")
+        logger.error("Error fetching credentials schema for source %s: %s", source, e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -268,7 +272,7 @@ def validate_credentials(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error validating credentials for source {source}: {e}")
+        logger.error("Error validating credentials for source %s: %s", source, e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -312,7 +316,7 @@ def validate_entities(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error validating entities for federated connector {id}: {e}")
+        logger.error("Error validating entities for federated connector %s: %s", id, e)
         return Response(status_code=500)
 
 
@@ -352,7 +356,7 @@ def get_authorize_url(
 
     # Generate state parameter and store session info
     logger.info(
-        f"Generating OAuth state for federated_connector_id={id}, user_id={user.id}"
+        "Generating OAuth state for federated_connector_id=%s, user_id=%s", id, user.id
     )
     state = generate_oauth_state(
         federated_connector_id=id,
@@ -361,7 +365,7 @@ def get_authorize_url(
 
     # Add state to the OAuth URL
     authorize_url = add_state_to_oauth_url(base_authorize_url, state)
-    logger.info(f"Generated OAuth authorize URL with state for connector {id}")
+    logger.info("Generated OAuth authorize URL with state for connector %s", id)
     return AuthorizeUrlResponse(authorize_url=authorize_url)
 
 
@@ -430,7 +434,9 @@ def handle_oauth_callback_generic(
     # Store OAuth token in database if we have an access token
     if oauth_result.access_token:
         logger.info(
-            f"Storing OAuth token for federated_connector_id={federated_connector_id}, user_id={oauth_session.user_id}"
+            "Storing OAuth token for federated_connector_id=%s, user_id=%s",
+            federated_connector_id,
+            oauth_session.user_id,
         )
         update_federated_connector_oauth_token(
             db_session=db_session,
@@ -585,7 +591,7 @@ def update_federated_connector_endpoint(
         return get_federated_connector_detail(id, user, db_session)
 
     except ValueError as e:
-        logger.warning(f"Validation error updating federated connector {id}: {e}")
+        logger.warning("Validation error updating federated connector %s: %s", id, e)
         raise HTTPException(status_code=400, detail=str(e))
 
 
