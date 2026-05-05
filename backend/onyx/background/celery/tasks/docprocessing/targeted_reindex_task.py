@@ -196,25 +196,37 @@ def run_targeted_reindex(
             # work, then mark the job + synthetic IndexAttempts FAILED so
             # the FE poll surfaces the failure instead of waiting on a
             # row stuck in IN_PROGRESS forever.
+            #
+            # The cleanup itself is wrapped so a secondary failure (e.g.
+            # connection reset during the FAILED-state commit) does not
+            # mask the original exception: we always re-raise the root
+            # cause so celery records the right error.
             log.exception("Targeted reindex task failed; marking job FAILED")
-            db_session.rollback()
-            job = get_targeted_reindex_job(db_session, targeted_reindex_job_id)
-            if job is not None and not job.status.is_terminal():
-                attempts = (
-                    db_session.query(IndexAttempt)
-                    .filter(
-                        IndexAttempt.targeted_reindex_job_id == targeted_reindex_job_id
+            try:
+                db_session.rollback()
+                job = get_targeted_reindex_job(db_session, targeted_reindex_job_id)
+                if job is not None and not job.status.is_terminal():
+                    attempts = (
+                        db_session.query(IndexAttempt)
+                        .filter(
+                            IndexAttempt.targeted_reindex_job_id
+                            == targeted_reindex_job_id
+                        )
+                        .all()
                     )
-                    .all()
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    for attempt in attempts:
+                        if not attempt.status.is_terminal():
+                            attempt.status = IndexingStatus.FAILED
+                            attempt.time_updated = now
+                    job.status = IndexingStatus.FAILED
+                    job.completed_at = now
+                    db_session.commit()
+            except Exception:
+                log.exception(
+                    "Failed to mark job FAILED during error recovery; "
+                    "row may remain IN_PROGRESS until the celery retry"
                 )
-                now = datetime.datetime.now(datetime.timezone.utc)
-                for attempt in attempts:
-                    if not attempt.status.is_terminal():
-                        attempt.status = IndexingStatus.FAILED
-                        attempt.time_updated = now
-                job.status = IndexingStatus.FAILED
-                job.completed_at = now
-                db_session.commit()
             raise
 
     log.info(

@@ -93,8 +93,10 @@ def test_task_transitions_synthetic_attempts_to_success(
         .filter(IndexAttempt.targeted_reindex_job_id == result.targeted_reindex_job_id)
         .all()
     )
-    assert len(attempts) == 1
-    assert attempts[0].status == IndexingStatus.SUCCESS
+    # One synthetic attempt per (cc_pair × active SearchSettings); CI may
+    # run with PRESENT+FUTURE active. Assert all of them transitioned.
+    assert len(attempts) >= 1
+    assert all(a.status == IndexingStatus.SUCCESS for a in attempts)
 
 
 def test_task_marks_failure_derived_errors_resolved(
