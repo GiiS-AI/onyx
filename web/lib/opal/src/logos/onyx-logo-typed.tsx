@@ -1,5 +1,3 @@
-import SvgOnyxLogo from "@opal/logos/onyx-logo";
-import SvgOnyxTyped from "@opal/logos/onyx-typed";
 import { cn } from "@opal/utils";
 
 interface OnyxLogoTypedProps {
@@ -7,20 +5,14 @@ interface OnyxLogoTypedProps {
   className?: string;
 }
 
-// # NOTE(@raunakab):
-// This ratio is not some random, magical number; it is available on Figma.
-const HEIGHT_TO_GAP_RATIO = 5 / 16;
-
 const SvgOnyxLogoTyped = ({ size: height, className }: OnyxLogoTypedProps) => {
-  const gap = height != null ? height * HEIGHT_TO_GAP_RATIO : undefined;
-
+  const h = height ?? 32;
   return (
-    <div
-      className={cn(`flex flex-row items-center`, className)}
-      style={{ gap }}
-    >
-      <SvgOnyxLogo size={height} />
-      <SvgOnyxTyped size={height} />
+    <div className={cn("flex flex-row items-center", className)}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logotype.png" alt="GiiS" height={h} style={{ height: h, objectFit: "contain" }} className="dark:hidden" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logotype-dark.png" alt="GiiS" height={h} style={{ height: h, objectFit: "contain" }} className="hidden dark:block" />
     </div>
   );
 };
