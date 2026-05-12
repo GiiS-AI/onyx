@@ -464,7 +464,7 @@ function Footer() {
 
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
-    `[GiiS v0.1](https://www.giis.ai/) - ${APP_SLOGAN}`;
+    `GiiS v0.1 - ${APP_SLOGAN}`;
 
   return (
     <footer

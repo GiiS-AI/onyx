@@ -162,7 +162,7 @@ function SettingsPopover({
             orientation="reverse"
             icon={SvgOnyxLogo}
             title={markdown(
-              `[GiiS v0.1](https://www.giis.ai/)`
+              `GiiS v0.1`
             )}
           />
         </div>,

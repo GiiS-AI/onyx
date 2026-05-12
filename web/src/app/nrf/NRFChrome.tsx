@@ -71,7 +71,7 @@ export default function NRFChrome() {
 
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
-    `[GiiS v0.1](https://www.giis.ai/) - Open Source AI Platform`;
+    `GiiS v0.1 - Open Source AI Platform`;
 
   const showModeToggle =
     isPaidEnterpriseFeaturesEnabled &&
