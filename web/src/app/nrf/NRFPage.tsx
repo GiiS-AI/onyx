@@ -613,8 +613,8 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
             <Modal.Content width="sm">
               <Modal.Header
                 icon={SvgAlertTriangle}
-                title="Turn off Onyx new tab page?"
-                description="You'll see your browser's default new tab page instead. You can turn it back on anytime in your Onyx settings."
+                title="Turn off GiiS new tab page?"
+                description="You'll see your browser's default new tab page instead. You can turn it back on anytime in your GiiS settings."
                 onClose={() => setShowTurnOffModal(false)}
               />
               <Modal.Footer>
