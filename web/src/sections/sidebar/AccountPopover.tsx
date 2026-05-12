@@ -162,9 +162,7 @@ function SettingsPopover({
             orientation="reverse"
             icon={SvgOnyxLogo}
             title={markdown(
-              `[Onyx ${
-                settings?.webVersion ?? "dev"
-              }](https://docs.onyx.app/changelog)`
+              `[GiiS v0.1](https://www.giis.ai/)`
             )}
           />
         </div>,
