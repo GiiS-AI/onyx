@@ -7,13 +7,11 @@
 #
 # Directory structure (created by init container + session setup):
 #   /workspace/
-#   ├── demo_data/       # Demo data (baked into image, for demo sessions)
-#   ├── files/           # User's knowledge files (synced from S3)
 #   ├── skills/          # Agent skills (baked into image, copied per-session)
 #   ├── templates/       # Output templates (baked into image)
 #   └── sessions/        # Per-session workspaces (created via exec)
 #       └── $session_id/
-#           ├── files/   # Symlink to /workspace/demo_data or /workspace/files
+#           ├── files/   # User's knowledge files (synced from S3)
 #           ├── outputs/
 #           ├── AGENTS.md
 #           └── opencode.json
@@ -60,33 +58,28 @@ RUN EXISTING_USER=$(id -nu 1000 2>/dev/null || echo ""); \
     fi
 
 # Create workspace directories
-RUN mkdir -p workspace/sessions /workspace/files /workspace/templates /workspace/demo_data && \
+RUN mkdir -p /workspace/sessions /workspace/templates && \
     chown -R sandbox:sandbox /workspace
 
 # Copy outputs template (web app scaffold, without node_modules)
 COPY --exclude=.next --exclude=node_modules templates/outputs /workspace/templates/outputs
 RUN chown -R sandbox:sandbox /workspace/templates
 
-# Copy and extract demo data from zip file
-# Zip contains demo_data/ as root folder
-COPY demo_data.zip /tmp/demo_data.zip
-RUN unzip -q /tmp/demo_data.zip -d /workspace && \
-    rm /tmp/demo_data.zip && \
-    chown -R sandbox:sandbox /workspace/demo_data
-
 # Copy and install Python requirements into a venv
 COPY initial-requirements.txt /tmp/initial-requirements.txt
 RUN python3 -m venv /workspace/.venv && \
-    /workspace/.venv/bin/pip install --upgrade pip && \
-    /workspace/.venv/bin/pip install -r /tmp/initial-requirements.txt && \
-    rm /tmp/initial-requirements.txt && \
+    /workspace/.venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /workspace/.venv/bin/pip install --no-cache-dir -r /tmp/initial-requirements.txt && \
+    rm -rf /tmp/initial-requirements.txt /root/.cache/pip && \
     chown -R sandbox:sandbox /workspace/.venv
 
 # Add venv to PATH so python/pip use it by default
 ENV PATH="/workspace/.venv/bin:${PATH}"
 
 # Install pptxgenjs globally for creating presentations from scratch
-RUN npm install -g pptxgenjs
+RUN npm install -g pptxgenjs && \
+    npm cache clean --force && \
+    rm -rf /root/.npm
 
 # Install opencode CLI as sandbox user so it goes to their home directory
 USER sandbox
@@ -102,9 +95,9 @@ COPY --exclude=__pycache__ skills/ /workspace/skills/
 # Set ownership
 RUN chown -R sandbox:sandbox /workspace
 
-# Copy scripts
-COPY generate_agents_md.py /usr/local/bin/generate_agents_md.py
-RUN chmod +x /usr/local/bin/generate_agents_md.py
+# Install AWS CLI (needed for snapshot operations)
+COPY --from=amazon/aws-cli:latest /usr/local/aws-cli /usr/local/aws-cli
+RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
 
 # Switch to non-root user
 USER sandbox
